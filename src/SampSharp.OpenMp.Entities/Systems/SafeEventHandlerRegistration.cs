@@ -17,6 +17,16 @@ internal class SafeEventHandlerRegistration<TComponent, TEventHandler>(SampSharp
 
         _disposed = true;
 
+        // During host shutdown the native IComponentList/ICore pointers may already be
+        // invalidated by open.mp. Calling QueryComponent here would crash with an AV in
+        // the P/Invoke trampoline before HasValue could even return false. Just free the
+        // marshalled handler and skip the unsubscribe — the native side is going away.
+        if (environment.IsShuttingDown)
+        {
+            TEventHandler.Marshaller.Marshal(handler).Free();
+            return;
+        }
+
         var component = environment.Components.QueryComponent<TComponent>();
 
         if (!component.HasValue)
@@ -50,6 +60,13 @@ internal class SafeEventHandlerRegistration<TEventHandler>(SampSharpEnvironment 
         }
 
         _disposed = true;
+
+        // See note in the component-typed overload above — same reasoning for ICore.
+        if (environment.IsShuttingDown)
+        {
+            TEventHandler.Marshaller.Marshal(handler).Free();
+            return;
+        }
 
         if (!environment.Core.HasValue)
         {

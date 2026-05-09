@@ -27,12 +27,23 @@ internal class EcsHost(IServiceProvider serviceProvider, UnhandledExceptionHandl
     {
         OnGameModeExit();
 
-        if (_serviceProvider is IDisposable disposable)
+        if (_serviceProvider is not IDisposable disposable)
         {
-            //  TODO: This cleanup is called so late - we can't unsubscribe event handlers anymore, but the disposables in registered systems will try to unsubscribe them. This may cause a System.ExecutionEngineException on shutdown.
-            disposable.Dispose();
-            _serviceProvider = null;
+            return;
         }
+
+        // Cleanup runs after open.mp has already started tearing down other components
+        // pointers in IComponentList / ICore are unsafe to deref by now, so we flag the
+        // environment as shutting down and let SafeEventHandlerRegistration etc. skip
+        // their native unsubscribe calls. Without this, disposing systems crashes with
+        // an AV in IComponentList::QueryComponent.
+        if (_serviceProvider.GetService<SampSharpEnvironment>() is { } environment)
+        {
+            environment.IsShuttingDown = true;
+        }
+
+        disposable.Dispose();
+        _serviceProvider = null;
     }
 
     private void UnhandledExceptionHandler(string context, Exception exception)
