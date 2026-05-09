@@ -214,6 +214,10 @@ const char * ManagedHost::get_error(int code) const
         case 0x800080a6: return "Hosting API does not support the requested scenario";
         case 0x800080a7: return "Support for a requested feature is disabled";
         case ERROR_MISSING_EXPORT: return "Missing export fuction in host library";
-        default: return "Unkown error";
+        default: {
+            static thread_local char buf[64];
+            snprintf(buf, sizeof(buf), "Unknown HRESULT 0x%08X", static_cast<unsigned int>(code));
+            return buf;
+        }
     }
 }
