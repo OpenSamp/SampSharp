@@ -78,4 +78,5 @@ internal class EcsHost(IServiceProvider serviceProvider, UnhandledExceptionHandl
     {
         ServiceProvider.GetRequiredService<SystemRegistry>().LoadSystems();
     }
+
 }
